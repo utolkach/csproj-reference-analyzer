@@ -1,6 +1,6 @@
 ﻿namespace ReferenceAnalyzer
 {
- partial class MainWindow
+    partial class MainWindow
     {
         /// <summary>
         /// Required designer variable.
@@ -29,7 +29,7 @@
         private void InitializeComponent()
         {
             this.outputTextBox = new System.Windows.Forms.TextBox();
-            this.button1 = new System.Windows.Forms.Button();
+            this.StartAnalyzis = new System.Windows.Forms.Button();
             this.keepCustomProjectRefsCheckBox = new System.Windows.Forms.CheckBox();
             this.keepSystemCheckBox = new System.Windows.Forms.CheckBox();
             this.projectsTextBox = new System.Windows.Forms.TextBox();
@@ -44,6 +44,14 @@
             this.fullInfoOutput = new System.Windows.Forms.CheckBox();
             this.analyzeTextBox = new System.Windows.Forms.TextBox();
             this.label5 = new System.Windows.Forms.Label();
+            this.fullScanCheckBox = new System.Windows.Forms.CheckBox();
+            this.label6 = new System.Windows.Forms.Label();
+            this.namespaceToCountTextBox = new System.Windows.Forms.TextBox();
+            this.label7 = new System.Windows.Forms.Label();
+            this.statusStrip1 = new System.Windows.Forms.StatusStrip();
+            this.toolStripProgressBar1 = new System.Windows.Forms.ToolStripProgressBar();
+            this.globalStatus = new System.Windows.Forms.ToolStripStatusLabel();
+            this.statusStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
             // outputTextBox
@@ -56,15 +64,16 @@
             this.outputTextBox.TabIndex = 0;
             this.outputTextBox.WordWrap = false;
             // 
-            // button1
+            // StartAnalyzis
             // 
-            this.button1.Location = new System.Drawing.Point(897, 9);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(75, 56);
-            this.button1.TabIndex = 1;
-            this.button1.Text = "Go!";
-            this.button1.UseVisualStyleBackColor = true;
-            this.button1.Click += new System.EventHandler(this.StartAnalysis);
+            this.StartAnalyzis.Enabled = false;
+            this.StartAnalyzis.Location = new System.Drawing.Point(897, 9);
+            this.StartAnalyzis.Name = "StartAnalyzis";
+            this.StartAnalyzis.Size = new System.Drawing.Size(75, 56);
+            this.StartAnalyzis.TabIndex = 1;
+            this.StartAnalyzis.Text = "3. Go!";
+            this.StartAnalyzis.UseVisualStyleBackColor = true;
+            this.StartAnalyzis.Click += new System.EventHandler(this.StartAnalysis);
             // 
             // keepCustomProjectRefsCheckBox
             // 
@@ -88,22 +97,23 @@
             // 
             // projectsTextBox
             // 
-            this.projectsTextBox.Location = new System.Drawing.Point(15, 67);
+            this.projectsTextBox.Location = new System.Drawing.Point(15, 87);
             this.projectsTextBox.Multiline = true;
             this.projectsTextBox.Name = "projectsTextBox";
             this.projectsTextBox.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-            this.projectsTextBox.Size = new System.Drawing.Size(383, 451);
+            this.projectsTextBox.Size = new System.Drawing.Size(383, 431);
             this.projectsTextBox.TabIndex = 6;
             this.projectsTextBox.WordWrap = false;
+            this.projectsTextBox.TextChanged += new System.EventHandler(this.ProjectsTextBox_TextChanged);
             // 
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(12, 50);
+            this.label1.Location = new System.Drawing.Point(12, 71);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(146, 13);
+            this.label1.Size = new System.Drawing.Size(177, 13);
             this.label1.TabIndex = 7;
-            this.label1.Text = "Project List [separator = \\r\\n]:";
+            this.label1.Text = "Or set Project List [separator = \\r\\n]:";
             // 
             // label2
             // 
@@ -127,9 +137,9 @@
             this.label3.AutoSize = true;
             this.label3.Location = new System.Drawing.Point(12, 9);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(70, 13);
+            this.label3.Size = new System.Drawing.Size(114, 13);
             this.label3.TabIndex = 10;
-            this.label3.Text = "Path to scan:";
+            this.label3.Text = "1. Select path to scan:";
             // 
             // button3
             // 
@@ -186,11 +196,71 @@
             this.label5.TabIndex = 16;
             this.label5.Text = "Usages and references";
             // 
-            // Form1
+            // fullScanCheckBox
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1296, 522);
+            this.fullScanCheckBox.AutoSize = true;
+            this.fullScanCheckBox.Location = new System.Drawing.Point(34, 51);
+            this.fullScanCheckBox.Name = "fullScanCheckBox";
+            this.fullScanCheckBox.Size = new System.Drawing.Size(104, 17);
+            this.fullScanCheckBox.TabIndex = 17;
+            this.fullScanCheckBox.Text = "Scan all projects";
+            this.fullScanCheckBox.UseVisualStyleBackColor = true;
+            this.fullScanCheckBox.CheckedChanged += new System.EventHandler(this.FullScanCheckBox_CheckedChanged);
+            // 
+            // label6
+            // 
+            this.label6.AutoSize = true;
+            this.label6.Location = new System.Drawing.Point(12, 52);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(16, 13);
+            this.label6.TabIndex = 18;
+            this.label6.Text = "2:";
+            // 
+            // namespaceToCountTextBox
+            // 
+            this.namespaceToCountTextBox.Location = new System.Drawing.Point(1184, 21);
+            this.namespaceToCountTextBox.Name = "namespaceToCountTextBox";
+            this.namespaceToCountTextBox.Size = new System.Drawing.Size(100, 20);
+            this.namespaceToCountTextBox.TabIndex = 19;
+            // 
+            // label7
+            // 
+            this.label7.AutoSize = true;
+            this.label7.Location = new System.Drawing.Point(981, 24);
+            this.label7.Name = "label7";
+            this.label7.Size = new System.Drawing.Size(201, 13);
+            this.label7.TabIndex = 20;
+            this.label7.Text = "Part of namespace for reference counter:";
+            // 
+            // statusStrip1
+            // 
+            this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toolStripProgressBar1,
+            this.globalStatus});
+            this.statusStrip1.Location = new System.Drawing.Point(0, 523);
+            this.statusStrip1.Name = "statusStrip1";
+            this.statusStrip1.Size = new System.Drawing.Size(1296, 22);
+            this.statusStrip1.TabIndex = 21;
+            this.statusStrip1.Text = "statusStrip1";
+            // 
+            // toolStripProgressBar1
+            // 
+            this.toolStripProgressBar1.Name = "toolStripProgressBar1";
+            this.toolStripProgressBar1.Size = new System.Drawing.Size(100, 16);
+            // 
+            // globalStatus
+            // 
+            this.globalStatus.Name = "globalStatus";
+            this.globalStatus.Size = new System.Drawing.Size(0, 17);
+            // 
+            // MainWindow
+            // 
+            this.ClientSize = new System.Drawing.Size(1296, 545);
+            this.Controls.Add(this.statusStrip1);
+            this.Controls.Add(this.label7);
+            this.Controls.Add(this.namespaceToCountTextBox);
+            this.Controls.Add(this.label6);
+            this.Controls.Add(this.fullScanCheckBox);
             this.Controls.Add(this.label5);
             this.Controls.Add(this.analyzeTextBox);
             this.Controls.Add(this.fullInfoOutput);
@@ -204,14 +274,14 @@
             this.Controls.Add(this.projectsTextBox);
             this.Controls.Add(this.keepSystemCheckBox);
             this.Controls.Add(this.keepCustomProjectRefsCheckBox);
-            this.Controls.Add(this.button1);
+            this.Controls.Add(this.StartAnalyzis);
             this.Controls.Add(this.outputTextBox);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
-            this.Name = "Form1";
+            this.Name = "MainWindow";
             this.ShowIcon = false;
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Reference Analyzer";
+            this.statusStrip1.ResumeLayout(false);
+            this.statusStrip1.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -220,7 +290,7 @@
         #endregion
 
         private System.Windows.Forms.TextBox outputTextBox;
-        private System.Windows.Forms.Button button1;
+        private System.Windows.Forms.Button StartAnalyzis;
         private System.Windows.Forms.CheckBox keepCustomProjectRefsCheckBox;
         private System.Windows.Forms.CheckBox keepSystemCheckBox;
         private System.Windows.Forms.TextBox projectsTextBox;
@@ -235,5 +305,14 @@
         private System.Windows.Forms.CheckBox fullInfoOutput;
         private System.Windows.Forms.TextBox analyzeTextBox;
         private System.Windows.Forms.Label label5;
-    }}
+        private System.Windows.Forms.CheckBox fullScanCheckBox;
+        private System.Windows.Forms.Label label6;
+        private System.Windows.Forms.TextBox namespaceToCountTextBox;
+        private System.Windows.Forms.Label label7;
+        private System.Windows.Forms.StatusStrip statusStrip1;
+        private System.Windows.Forms.ToolStripProgressBar toolStripProgressBar1;
+        private System.Windows.Forms.ToolStripStatusLabel globalStatusTextBox;
+        private System.Windows.Forms.ToolStripStatusLabel globalStatus;
+    }
+}
 

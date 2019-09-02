@@ -16,18 +16,25 @@ namespace ReferenceAnalyzer
         private const char CustomNamespaceSeparator = ',';
         private const string ReferenceItemType = "Reference";
         private const string ProjectReferenceItemType = "ProjectReference";
-        private const string Na = "N/A";
         private const string SystemStr = "System";
         private const string SpreadsheetDelimiter = "\r\n\t\t";
         private const string Assemblyref = "\tassemblyref\t";
         private const string Projref = "\tprojref\t";
-        private const string Modules = "Modules";
         private const string RefsHeader = "***REFS***";
         private const string UsagesHeader = "\r\n***USAGES***";
+        private const string StatusTextFinished = "Finished";
+
+        private string _namespaceToCount = string.Empty;
 
         public MainWindow()
         {
             InitializeComponent();
+            GetDataFromControls();
+        }
+
+        private void GetDataFromControls()
+        {
+            _namespaceToCount = string.IsNullOrEmpty(namespaceToCountTextBox.Text) ? string.Empty : namespaceToCountTextBox.Text;
         }
 
         private void StartAnalysis(object sender, EventArgs e)
@@ -42,7 +49,10 @@ namespace ReferenceAnalyzer
         {
             var files = Directory.GetFiles(path);
             var result = new List<string>();
-            result.AddRange(files.Where(f => projectNames.Contains(Path.GetFileNameWithoutExtension(f)) && Path.GetExtension(f) == ProjExtension));
+            result.AddRange(files.Where(f => fullScanCheckBox.Checked
+                ? Path.GetExtension(f) == ProjExtension
+                : projectNames.Contains(Path.GetFileNameWithoutExtension(f)) && Path.GetExtension(f) == ProjExtension));
+
             var directories = Directory.GetDirectories(path);
             result.AddRange(directories.SelectMany(x => FindProjectsPaths(x, projectNames)));
             return result.ToArray();
@@ -63,29 +73,13 @@ namespace ReferenceAnalyzer
             {
                 var project = projectCollection.LoadProject(projectPath);
                 var projectName = Path.GetFileNameWithoutExtension(projectPath);
-                sb.AppendLine($"{projectName}");
+                sb.AppendLine($"{projectName} [{ projectPath}]");
 
                 var assemblyReferences = project.GetItems(ReferenceItemType);
-                var filteredAssemblyReferences = assemblyReferences
-                    .Select(x => fullInfoOutput.Checked
-                        ? x.EvaluatedInclude + SpreadsheetDelimiter + (!x.DirectMetadata.Any()
-                              ? string.Empty
-                              : x.DirectMetadata.Select((a, b) => $"{a.Name}:{a.UnevaluatedValue}")
-                                  .Aggregate((a, b) => $"{a}, {b}"))
-                        : x.EvaluatedInclude.Split(',').FirstOrDefault() ?? Na)
-                    .Where(x => keepSystemCheckBox.Checked || !x.StartsWith(SystemStr))
-                    .Where(x => !keepCustomProjectRefsCheckBox.Checked || !customRefs.Any(x.StartsWith)).ToList();
+                var filteredAssemblyReferences = FilterReferences(assemblyReferences, customRefs);
 
                 var projectReferences = project.GetItems(ProjectReferenceItemType);
-                var filteredProjectReferences = projectReferences
-                    .Select(x => fullInfoOutput.Checked
-                        ? x.EvaluatedInclude + SpreadsheetDelimiter + (!x.DirectMetadata.Any()
-                              ? Na
-                              : x.DirectMetadata.Select((a, b) => $"{a.Name}:{a.UnevaluatedValue}")
-                                  .Aggregate((a, b) => $"{a}, {b}"))
-                        : x.EvaluatedInclude.Split(',').FirstOrDefault() ?? Na)
-                    .Where(x => keepSystemCheckBox.Checked || !x.StartsWith(SystemStr))
-                    .Where(x => !keepCustomProjectRefsCheckBox.Checked || !customRefs.Any(x.StartsWith)).ToList();
+                var filteredProjectReferences = FilterReferences(projectReferences, customRefs);
 
                 foreach (var assemblyRef in filteredAssemblyReferences)
                 {
@@ -95,7 +89,6 @@ namespace ReferenceAnalyzer
                 foreach (var projectRef in filteredProjectReferences)
                 {
                     var projectRefName = Path.GetFileNameWithoutExtension(projectRef);
-                    sb.AppendLine($"{projectRef}");
                     sb.AppendLine(Projref + projectRefName);
                 }
 
@@ -103,7 +96,8 @@ namespace ReferenceAnalyzer
                 allRefs.AddRange(filteredAssemblyReferences);
                 allRefs.AddRange(filteredProjectReferences);
                 usageList.Add((projectName, allRefs.ToArray()));
-                priorityList.Add((projectName, allRefs.Count(x => x.Contains(Modules))));
+                priorityList.Add((projectName, allRefs.Count(x => x.Contains(_namespaceToCount))));
+
                 projectCollection.UnloadProject(project);
             }
 
@@ -114,24 +108,36 @@ namespace ReferenceAnalyzer
             }
 
             sbAnalyze.AppendLine(UsagesHeader);
-            foreach (var tuple in usageList)
+            foreach (var (projName, _) in usageList)
             {
-                var usages = usageList.SelectMany(r => r.Item2.Where(l => l.Contains(tuple.Item1)));
+                var usages = usageList.SelectMany(r => r.Item2.Where(l => l.Contains(projName)));
                 var usagesCount = usages.Count();
 
-                outputUsageList.Add((tuple.Item1, usagesCount));
-
-                //var aggregate = usages.Any() ? usages.Aggregate((a, b) => $"{a}\r\n{b}") : "";
-                //sbAnalyze.AppendLine($"*{tuple.Item1}\t{aggregate} usages");
+                outputUsageList.Add((projName, usagesCount));
             }
 
-            foreach (var tuple in outputUsageList.OrderByDescending(x => x.Item2))
+            foreach (var (projName, referenceCount) in outputUsageList.OrderByDescending(x => x.Item2))
             {
-                sbAnalyze.AppendLine($"{tuple.Item1}\t{tuple.Item2}");
+                sbAnalyze.AppendLine($"{projName}\t{referenceCount}");
             }
 
             analyzeTextBox.Text = sbAnalyze.ToString();
             outputTextBox.Text = sb.ToString();
+            globalStatus.Text = StatusTextFinished;
+        }
+
+        private List<string> FilterReferences(ICollection<ProjectItem> assemblyReferences, string[] customRefs)
+        {
+            var filteredAssemblyReferences = assemblyReferences
+                .Select(x => fullInfoOutput.Checked
+                    ? x.EvaluatedInclude + SpreadsheetDelimiter + (!x.DirectMetadata.Any()
+                          ? string.Empty
+                          : x.DirectMetadata.Select((a, b) => $"{a.Name}:{a.UnevaluatedValue}")
+                              .Aggregate((a, b) => $"{a}, {b}"))
+                    : x.EvaluatedInclude.Split(',').FirstOrDefault() ?? string.Empty)
+                .Where(x => keepSystemCheckBox.Checked || !x.StartsWith(SystemStr))
+                .Where(x => !keepCustomProjectRefsCheckBox.Checked || !customRefs.Any(x.StartsWith)).ToList();
+            return filteredAssemblyReferences;
         }
 
         private void SetDirectoryPathDialogOpen(object sender, EventArgs e)
@@ -139,6 +145,22 @@ namespace ReferenceAnalyzer
             folderBrowserDialog1.ShowDialog(this);
             var selectedPath = folderBrowserDialog1.SelectedPath;
             pathToScanTextBox.Text = string.IsNullOrEmpty(selectedPath) ? pathToScanTextBox.Text : selectedPath;
+        }
+
+        private void FullScanCheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+            projectsTextBox.Enabled = !fullScanCheckBox.Checked;
+            StartAnalyzis.Enabled = IsStartAnalyzisButtonEnabled();
+        }
+
+        private void ProjectsTextBox_TextChanged(object sender, EventArgs e)
+        {
+            StartAnalyzis.Enabled = IsStartAnalyzisButtonEnabled();
+        }
+
+        private bool IsStartAnalyzisButtonEnabled()
+        {
+            return !string.IsNullOrEmpty(pathToScanTextBox.Text) && (fullScanCheckBox.Checked || !string.IsNullOrEmpty(projectsTextBox.Text));
         }
     }
 }
