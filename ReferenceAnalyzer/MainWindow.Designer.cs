@@ -151,6 +151,11 @@
             this.button3.UseVisualStyleBackColor = true;
             this.button3.Click += new System.EventHandler(this.SetDirectoryPathDialogOpen);
             // 
+            // folderBrowserDialog1
+            // 
+            this.folderBrowserDialog1.SelectedPath = "D:\\_Dev\\TravelPlanner.API";
+            this.folderBrowserDialog1.ShowNewFolderButton = false;
+            // 
             // customReferenceTextBox
             // 
             this.customReferenceTextBox.Location = new System.Drawing.Point(485, 22);

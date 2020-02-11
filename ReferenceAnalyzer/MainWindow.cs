@@ -18,8 +18,8 @@ namespace ReferenceAnalyzer
         private const string ProjectReferenceItemType = "ProjectReference";
         private const string SystemStr = "System";
         private const string ItemDelimiter = "    ";
-        private const string RefsHeader = "***REFS***";
-        private const string UsagesHeader = "\r\n***USAGES***";
+        private const string RefsHeader = "References in project:";
+        private const string UsagesHeader = "\r\nUsages in other projects:";
         private const string StatusTextFinished = "Finished";
 
         private readonly string _spreadsheetDelimiter = $"\r\n{ItemDelimiter}";
@@ -70,6 +70,9 @@ namespace ReferenceAnalyzer
             var usageList = new List<(string, ProjectItem[])>();
             var outputUsageList = new List<(string, int)>();
             var projectCollection = new ProjectCollection();
+
+            List<TreeNode<string>> roots = new List<TreeNode<string>>(2);
+
             foreach (var projectPath in projectPaths)
             {
                 var project = projectCollection.LoadProject(projectPath);
@@ -77,36 +80,46 @@ namespace ReferenceAnalyzer
                 sb.AppendLine($"{projectName} [{ projectPath}]");
 
                 var assemblyReferences = project.GetItems(ReferenceItemType);
-                var filteredAssemblyReferences = FilterReferences1(assemblyReferences, customRefs);
+                var filteredAssemblyReferences = FilterReferences(assemblyReferences, customRefs);
 
                 var projectReferences = project.GetItems(ProjectReferenceItemType);
-                var filteredProjectReferences = FilterReferences1(projectReferences, customRefs);
+                var filteredProjectReferences = FilterReferences(projectReferences, customRefs);
+
+                var projectNode = new TreeNode<string>(projectName);
 
                 foreach (var assemblyRef in filteredAssemblyReferences)
                 {
-                    var assemblyRefName = fullInfoOutput.Checked
-                        ? assemblyRef.EvaluatedInclude + _spreadsheetDelimiter + (!assemblyRef.DirectMetadata.Any()
-                              ? string.Empty
-                              : ItemDelimiter + assemblyRef.DirectMetadata.Select((a, b) => $"{a.Name}:{a.UnevaluatedValue}")
-                                  .Aggregate((a, b) => $"{a}, {b}"))
-                    :Path.GetFileNameWithoutExtension(assemblyRef.EvaluatedInclude);
-                    sb.AppendLine(_assemblyref + assemblyRefName);
+                    var projectItemToString = ProjectItemToString(assemblyRef);
+
+                    sb.AppendLine(projectItemToString);
+                    projectNode.Insert(projectNode, projectItemToString);
                 }
 
                 foreach (var projectRef in filteredProjectReferences)
                 {
-                    var projectRefName = fullInfoOutput.Checked
-                        ? projectRef.EvaluatedInclude + _spreadsheetDelimiter + (!projectRef.DirectMetadata.Any()
-                              ? string.Empty
-                              : ItemDelimiter + projectRef.DirectMetadata.Select((a, b) => $"{a.Name}:{a.UnevaluatedValue}")
-                                  .Aggregate((a, b) => $"{a}, {b}"))
-                        : Path.GetFileNameWithoutExtension(projectRef.EvaluatedInclude);
-                    sb.AppendLine(_projref + projectRefName);
+                    var projectItemToString = ProjectItemToString(projectRef);
+
+                    sb.AppendLine(projectItemToString);
+                    projectNode.Insert(projectNode, projectItemToString);
+                }
+
+                var insterted = false;
+                foreach (var root in roots)
+                {
+                    insterted = root.Insert(root, projectNode).Item2;
+                    if (insterted)
+                        break;
+                }
+
+                if (!insterted)
+                {
+                    roots.Add(projectNode);
                 }
 
                 var allRefs = new List<ProjectItem>();
                 allRefs.AddRange(filteredAssemblyReferences);
                 allRefs.AddRange(filteredProjectReferences);
+
                 usageList.Add((projectName, allRefs.ToArray()));
                 priorityList.Add((projectName, allRefs.Count(x => x.EvaluatedInclude.Contains(_namespaceToCount))));
 
@@ -133,26 +146,31 @@ namespace ReferenceAnalyzer
                 sbAnalyze.AppendLine($"{projName}{ItemDelimiter}{referenceCount}");
             }
 
+            sb.Append("DEBUG\r\n\r\n");
+
+            foreach (var root in roots)
+            {
+                sb.Append(root);
+            }
+
             analyzeTextBox.Text = sbAnalyze.ToString();
             outputTextBox.Text = sb.ToString();
             globalStatus.Text = StatusTextFinished;
         }
 
-        private List<string> FilterReferences(ICollection<ProjectItem> assemblyReferences, string[] customRefs)
+        private string ProjectItemToString(ProjectItem projectItem)
         {
-            var filteredAssemblyReferences = assemblyReferences
-                .Select(x => fullInfoOutput.Checked
-                    ? x.EvaluatedInclude + _spreadsheetDelimiter + (!x.DirectMetadata.Any()
-                          ? string.Empty
-                          : x.DirectMetadata.Select((a, b) => $"{a.Name}:{a.UnevaluatedValue}")
-                              .Aggregate((a, b) => $"{a}, {b}"))
-                    : x.EvaluatedInclude.Split(',').FirstOrDefault() ?? string.Empty)
-                .Where(x => keepSystemCheckBox.Checked || !x.StartsWith(SystemStr))
-                .Where(x => !keepCustomProjectRefsCheckBox.Checked || !customRefs.Any(x.StartsWith)).ToList();
-            return filteredAssemblyReferences;
+            var projectRefName = fullInfoOutput.Checked
+                ? projectItem.EvaluatedInclude + _spreadsheetDelimiter + (!projectItem.DirectMetadata.Any()
+                      ? string.Empty
+                      : ItemDelimiter + projectItem.DirectMetadata
+                            .Select((a, b) => $"{a.Name}:{a.UnevaluatedValue}")
+                            .Aggregate((a, b) => $"{a}, {b}"))
+                : Path.GetFileNameWithoutExtension(projectItem.EvaluatedInclude);
+            return projectRefName;
         }
 
-        private List<ProjectItem> FilterReferences1(ICollection<ProjectItem> assemblyReferences, string[] customRefs)
+        private List<ProjectItem> FilterReferences(ICollection<ProjectItem> assemblyReferences, string[] customRefs)
         {
             var filteredAssemblyReferences = assemblyReferences
                 .Where(x => keepSystemCheckBox.Checked || !Path.GetFileName(x.EvaluatedInclude).StartsWith(SystemStr))
